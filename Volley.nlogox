@@ -5,7 +5,7 @@ breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 globals [ roles ]
 turtles-own [ role pos ]
-balles-own [ cible ]
+balles-own [ cible nb-passes camp]
 
 
 
@@ -59,6 +59,8 @@ to setup
     setxy random-xcor random-ycor
     set size 2
     set cible nobody
+    set nb-passes 0
+    set camp "gauche"
   ]
   
   attribuer-roles
@@ -69,7 +71,7 @@ to setup
   ask joueur-dom 0 [ set color yellow ]
   ask joueur-ext 6 [ set color yellow ]
   
-  ask balles [ move-to [pos] of joueur-dom 4 ] ;; on place la balle sur joueur 0
+  ask balles [ move-to [pos] of joueur-dom 1 ] ;; on place la balle sur joueur 0
   
   reset-ticks
 end
@@ -90,6 +92,7 @@ to attribuer-roles ;; parcours la variable globale roles pour attribuer un role 
   ]
 end
 
+;; Permet de placer les joueurs de gauche
 to placer-dom
   if role = "R3" [ set pos (patch -7 0) move-to pos ]
   if role = "R4" [ set pos (patch -10 9) move-to pos ]
@@ -98,7 +101,8 @@ to placer-dom
   if role = "R5" [ set pos (patch -22 9) move-to pos ]
   if role = "R1" [ set pos (patch -22 -9) move-to pos ]
 end
-  
+
+;; Permet de placer les joueurs de droite
 to placer-ext
   if role = "R3" [ set pos (patch 7 0) move-to pos ]
   if role = "R4" [ set pos (patch 10 9) move-to pos ]
@@ -127,27 +131,104 @@ to tourner [dom?] ;; effectueur la rotation de l'équipe en changeant les rôles
   ] 
 end
 
-  
+
+;; Determiner sur quel joueur va aller la balle
 to passer
   ask balles [
     let porteur one-of other turtles-here
-    if porteur != nobody [
-      if [role] of porteur = "R3" [
-        let receveur one-of joueurs-dom with [role = "R4"]
+    if porteur != nobody and cible = nobody [
+      
+      
+      ;; Permet de renvoyer la balle dans le camp adverse ( aux joueurs défensifs )
+      if nb-passes >= 2 and camp = "gauche" [
+        let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
+        let receveur joueur-ext (chance-passe + 6)
         set cible receveur
+        set nb-passes 0
+        set camp "droite"
       ]
-      if [role] of porteur = "R4" [
-        let receveur one-of joueurs-dom with [role = "R2"]
+      
+      if nb-passes >= 2 and camp = "droite" [
+        let chance-passe random 2
+        let receveur joueur-dom (chance-passe)
         set cible receveur
+        set nb-passes 0
+        set camp "gauche"
       ]
-      if [role] of porteur = "R2" [
-        let receveur one-of joueurs-dom with [role = "R3"]
-        set cible receveur
-      ]
+      
+      
+        ;; Reception des joueurs arrière -> passe au passeur R3
+        if [role] of porteur = "R1" [
+          passer-passeur
+        ]
+        if [role] of porteur = "R5" [
+          passer-passeur
+        ]
+        if [role] of porteur = "R6" [
+          passer-passeur
+        ]
+        
+        ;; Passe la balle a l'attaquant avec proba = 0.5
+        if [role] of porteur = "R3" [
+            passer-attaquant
+        ]
     ]
   ]
 end
 
+
+;; Fonction qui passe la balle au passeur
+to passer-passeur
+  ask balles [ ;; Perspective de la balle
+    ifelse camp = "gauche" [
+      let receveur one-of joueurs-dom with [role = "R3"]
+      set cible receveur
+      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+    ] [
+      let receveur one-of joueurs-ext with [role = "R3"]
+      set cible receveur
+      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+    ]
+    
+  ]
+end
+
+
+;; Fonction qui determine l'attaquant
+to passer-attaquant
+  ask balles [
+    
+    ;; Par rapport au camp de gauche
+    ifelse camp = "gauche" [
+        let chance-passe random-float  1
+        ifelse chance-passe < 0.5 [
+           let receveur one-of joueurs-dom with [role = "R2"]
+           set cible receveur
+           set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+      ] [
+           let receveur one-of joueurs-dom with [role = "R4"]
+           set cible receveur
+           set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+         ]
+    ] 
+    
+    ;; Par rapport au camp de droite
+    [
+          let chance-passe random-float  1
+          ifelse chance-passe < 0.5 [
+          let receveur one-of joueurs-ext with [role = "R2"]
+          set cible receveur
+          set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+       ] [
+          let receveur one-of joueurs-ext with [role = "R4"]
+          set cible receveur
+          set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+        ]
+    ]
+  ]
+end
+    
+;; Fonction qui bouge la balle par rapport a sa cible 
 to move-balle
   ask balles [
     if cible != nobody [
