@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<model version="NetLogo 7.0.0" snapToGrid="true">
+<model version="NetLogo 7.0.2" snapToGrid="true">
   <code><![CDATA[breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 globals [ roles ]
 turtles-own [ role pos ]
+balles-own [ cible ]
 
 
 
@@ -57,6 +58,7 @@ to setup
     set color white
     setxy random-xcor random-ycor
     set size 2
+    set cible nobody
   ]
   
   attribuer-roles
@@ -67,17 +69,14 @@ to setup
   ask joueur-dom 0 [ set color yellow ]
   ask joueur-ext 6 [ set color yellow ]
   
+  ask balles [ move-to [pos] of joueur-dom 4 ] ;; on place la balle sur joueur 0
+  
   reset-ticks
 end
 
 to go
-  ask turtles [ 
-    tourner true
-    tourner false
-  ]
-  
-  ask balles [ move-to [pos] of joueur-dom 0 ] ;; on place la balle sur joueur 0
-  passer ;; des tests
+  passer
+  move-balle
   
   tick
 end
@@ -128,20 +127,44 @@ to tourner [dom?] ;; effectueur la rotation de l'équipe en changeant les rôles
   ] 
 end
 
+  
 to passer
   ask balles [
     let porteur one-of other turtles-here
     if porteur != nobody [
-      show (word "La balle est sur le joueur " [who] of porteur)
+      if [role] of porteur = "R3" [
+        let receveur one-of joueurs-dom with [role = "R4"]
+        set cible receveur
+      ]
+      if [role] of porteur = "R4" [
+        let receveur one-of joueurs-dom with [role = "R2"]
+        set cible receveur
+      ]
+      if [role] of porteur = "R2" [
+        let receveur one-of joueurs-dom with [role = "R3"]
+        set cible receveur
+      ]
     ]
   ]
 end
-  ]]></code>
+
+to move-balle
+  ask balles [
+    if cible != nobody [
+      face [pos] of cible
+      fd 0.5
+      if distance [pos] of cible < 0.5 [
+        move-to [pos] of cible ;; la balle va sur le patch du receveur quand le rayon de perception du receveur voit la balle
+        set cible nobody  
+      ]
+    ]
+  ]
+end]]></code>
   <widgets>
     <view x="250" wrappingAllowedX="true" y="35" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="true" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
     <button x="30" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup
 </button>
-    <button x="120" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">go</button>
+    <button x="120" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
   </widgets>
   <info>## WHAT IS IT?
 
