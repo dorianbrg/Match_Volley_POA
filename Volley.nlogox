@@ -3,7 +3,7 @@
   <code><![CDATA[breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
-globals [ roles service  ]
+globals [ roles service compteur-dom compteur-ext  ]
 turtles-own [ role pos ]
 balles-own [ cible nb-passes speed camp altitude etat]
 
@@ -16,6 +16,9 @@ to setup
   
   set roles [ "R1" "R6" "R5" "R4" "R3" "R2" ]
   set service "gauche"
+  
+  set compteur-dom 0
+  set compteur-ext 10
   
   
   ;; Créer le terrain de volley avec les lignes de sorties, de 3 mètres et le filet en blanc
@@ -185,11 +188,6 @@ to servir
       ]
       move-to pos
     ]
-      
-    
-    
-    
-    
   ]
 end
 
@@ -332,6 +330,8 @@ end]]></code>
     <button x="30" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
     <button x="120" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
+    <monitor x="280" precision="17" y="70" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
+    <monitor x="1425" precision="17" y="60" height="60" fontSize="11" width="100" display="     Exterieur">compteur-ext</monitor>
   </widgets>
   <info>## WHAT IS IT?
 
