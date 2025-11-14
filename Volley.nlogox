@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<model version="NetLogo 7.0.1" snapToGrid="true">
+<model version="NetLogo 7.0.2" snapToGrid="true">
   <code><![CDATA[breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
-globals [ roles ]
+globals [ roles service  ]
 turtles-own [ role pos ]
-balles-own [ cible nb-passes camp speed]
+balles-own [ cible nb-passes speed camp altitude etat]
 
 
 
@@ -15,6 +15,8 @@ to setup
   clear-all
   
   set roles [ "R1" "R6" "R5" "R4" "R3" "R2" ]
+  set service "gauche"
+  
   
   ;; Créer le terrain de volley avec les lignes de sorties, de 3 mètres et le filet en blanc
   ask patches [
@@ -62,6 +64,8 @@ to setup
     set nb-passes 0
     set camp "gauche"
     set speed 0.5
+    set altitude 0
+    set etat "prep"
   ]
   
   attribuer-roles
@@ -72,12 +76,14 @@ to setup
   ask joueur-dom 0 [ set color yellow ]
   ask joueur-ext 6 [ set color yellow ]
   
-  ask balles [ move-to [pos] of joueur-dom 1 ] ;; on place la balle sur joueur 0
+  ask balles [ move-to one-of joueurs-dom with [role = "R1"] ] ;; on place la balle sur joueur 0
   
   reset-ticks
 end
 
 to go
+  
+  servir
   passer
   move-balle
   
@@ -112,6 +118,81 @@ to placer-ext
   if role = "R5" [ set pos (patch 22 9) move-to pos ]
   if role = "R1" [ set pos (patch 22 -9) move-to pos ]
 end
+
+to servir
+  ;; Partie de la fonction servir -> amène le joueur au service avec la balle
+  if service = "gauche"[
+    
+    let serveur one-of joueurs-dom with [role = "R1"]
+    let pos-serveur patch -42 -9
+    
+    ask balles [
+      set cible serveur
+    ]
+    
+    ask serveur [
+      while [distance pos-serveur > 0.5] [
+        face pos-serveur
+        fd 0.5
+        set pos patch-here   ;; Remettre à jour la position du joueur
+        
+        ask balles [
+          set cible serveur
+        ]
+        
+        move-balle
+      ]
+      
+      move-to pos-serveur
+      ask balles [ move-to pos-serveur ]
+    ]
+    
+    
+    ;; Partie 2 de la fonction servir -> lancer de la balle 
+    let pos-contact patch -32 -9
+    ask balles [
+      set speed 0.2
+      while [distance pos-contact > 0.2] [
+        
+        face pos-contact
+        fd speed
+        
+        if distance pos-contact < 5 [
+          ask serveur [
+            face pos-contact 
+            fd 0.4
+          ]
+        ]
+      ]
+    ]
+    
+    ;; Partie 3 de la fonction servir -> contact avec la balle
+    ask balles [
+      let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
+      let receveur joueur-ext (chance-passe + 6)
+      set cible receveur
+      set camp "droite"
+      set service " "
+      set speed 0.5
+    ]
+    
+    ask serveur [ 
+      set pos (patch -22 -9) 
+      while [ distance pos > 0.3 ] [
+        face pos
+        fd 0.3
+        move-balle
+      ]
+      move-to pos
+    ]
+      
+    
+    
+    
+    
+  ]
+end
+
 
 to tourner [dom?] ;; effectueur la rotation de l'équipe en changeant les rôles puis en les replaçant
   let n (length roles)
@@ -247,8 +328,8 @@ to move-balle
   ]
 end]]></code>
   <widgets>
-    <view x="250" wrappingAllowedX="true" y="35" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="true" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
-    <button x="30" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">setup
+    <view x="250" wrappingAllowedX="false" y="35" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
+    <button x="30" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
     <button x="120" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
   </widgets>
