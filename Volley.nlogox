@@ -3,16 +3,15 @@
   <code><![CDATA[breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
+
 globals [ roles service compteur-dom compteur-ext  ]
 turtles-own [ role pos ]
-balles-own [ cible nb-passes speed camp altitude etat]
-
-
-
+balles-own [ cible nb-passes speed camp altitude]
 
 
 to setup
   clear-all
+  no-display ;; sinon la vue graphique est modifié après chaque agent modifié, ce qui crée des gros ralentissement dans le setup
   
   set roles [ "R1" "R6" "R5" "R4" "R3" "R2" ]
   set service "gauche"
@@ -63,25 +62,25 @@ to setup
     set color white
     setxy random-xcor random-ycor
     set size 2
-    set cible nobody
-    set nb-passes 0
-    set camp "gauche"
+    set cible nobody ;; détermine la cible de la balle (là où elle va aller)
+    set nb-passes 0 ;; détermine le nb actuel de passe dans l'équipe
+    set camp "gauche" ;; détermine dans quel camp est la balle
     set speed 0.5
-    set altitude 0
-    set etat "prep"
+    set altitude 0 ;; détermine l'altitude de la balle
   ]
   
   attribuer-roles
   ask joueurs-dom [ placer-dom ]
   ask joueurs-ext [ placer-ext ]
   
-  ;; pour faire des tests
-  ask joueur-dom 0 [ set color yellow ]
-  ask joueur-ext 6 [ set color yellow ]
+  ;; Les libéro sont de couleur distinctive par rapport aux autres joueurs de l'équipe
+  ask joueurs-dom with [ role = "R6" ] [ set color pink ]
+  ask joueurs-ext with [ role = "R6" ] [ set color yellow ]
   
   ask balles [ move-to one-of joueurs-dom with [role = "R1"] ] ;; on place la balle sur joueur 0
   
   reset-ticks
+  display ;; dessine la vue graphique à la fin, donc seulement pour l'état final
 end
 
 to go
@@ -124,7 +123,7 @@ end
 
 to servir
   ;; Partie de la fonction servir -> amène le joueur au service avec la balle
-  if service = "gauche"[
+  if service = "gauche" [
     
     let serveur one-of joueurs-dom with [role = "R1"]
     let pos-serveur patch -42 -9
@@ -175,7 +174,7 @@ to servir
       let receveur joueur-ext (chance-passe + 6)
       set cible receveur
       set camp "droite"
-      set service " "
+      set service ""
       set speed 0.5
     ]
     
@@ -217,10 +216,7 @@ to passer
   ask balles [
     let porteur one-of other turtles-here
     if porteur != nobody and cible = nobody [
-      
-      ;; Appel de la fonction attaquer
-      attaquer
-      
+      passer-adversaire ;; vérifie si le nb de passes max est effectué pour envoyer la balle dans le camp adverse
       
         ;; Reception des joueurs arrière -> passe au passeur R3
         if [role] of porteur = "R1" [
@@ -232,7 +228,6 @@ to passer
         if [role] of porteur = "R6" [
           passer-passeur
         ]
-        
         ;; Passe la balle a l'attaquant avec proba = 0.5
         if [role] of porteur = "R3" [
             passer-attaquant
@@ -259,14 +254,14 @@ to passer-passeur
 end
 
 ;; Fonction qui permet à la balle de changer de camp en attaquant
-to attaquer
+to passer-adversaire
   ;; Permet de renvoyer la balle dans le camp adverse ( aux joueurs défensifs )
       if nb-passes >= 2 and camp = "gauche" [
         let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
-        let receveur joueur-ext (chance-passe + 6)
+        let receveur joueur-ext (chance-passe + 6) ;; Les joueurs 6 à 8 sont les joueurs défensifs des joueurs extérieurs
         set cible receveur
         set nb-passes 0
-        set camp "droite"
+        set camp "droite" ;; La balle est mtn dans le camp droite
       ]
       
       if nb-passes >= 2 and camp = "droite" [
