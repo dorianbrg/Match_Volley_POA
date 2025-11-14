@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<model version="NetLogo 7.0.2" snapToGrid="true">
+<model version="NetLogo 7.0.1" snapToGrid="true">
   <code><![CDATA[breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 globals [ roles ]
 turtles-own [ role pos ]
-balles-own [ cible nb-passes camp]
+balles-own [ cible nb-passes camp speed]
 
 
 
@@ -61,6 +61,7 @@ to setup
     set cible nobody
     set nb-passes 0
     set camp "gauche"
+    set speed 0.5
   ]
   
   attribuer-roles
@@ -138,23 +139,8 @@ to passer
     let porteur one-of other turtles-here
     if porteur != nobody and cible = nobody [
       
-      
-      ;; Permet de renvoyer la balle dans le camp adverse ( aux joueurs défensifs )
-      if nb-passes >= 2 and camp = "gauche" [
-        let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
-        let receveur joueur-ext (chance-passe + 6)
-        set cible receveur
-        set nb-passes 0
-        set camp "droite"
-      ]
-      
-      if nb-passes >= 2 and camp = "droite" [
-        let chance-passe random 2
-        let receveur joueur-dom (chance-passe)
-        set cible receveur
-        set nb-passes 0
-        set camp "gauche"
-      ]
+      ;; Appel de la fonction attaquer
+      attaquer
       
       
         ;; Reception des joueurs arrière -> passe au passeur R3
@@ -193,6 +179,25 @@ to passer-passeur
   ]
 end
 
+;; Fonction qui permet à la balle de changer de camp en attaquant
+to attaquer
+  ;; Permet de renvoyer la balle dans le camp adverse ( aux joueurs défensifs )
+      if nb-passes >= 2 and camp = "gauche" [
+        let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
+        let receveur joueur-ext (chance-passe + 6)
+        set cible receveur
+        set nb-passes 0
+        set camp "droite"
+      ]
+      
+      if nb-passes >= 2 and camp = "droite" [
+        let chance-passe random 2
+        let receveur joueur-dom (chance-passe)
+        set cible receveur
+        set nb-passes 0
+        set camp "gauche"
+      ]
+end
 
 ;; Fonction qui determine l'attaquant
 to passer-attaquant
@@ -233,7 +238,7 @@ to move-balle
   ask balles [
     if cible != nobody [
       face [pos] of cible
-      fd 0.5
+      fd speed
       if distance [pos] of cible < 0.5 [
         move-to [pos] of cible ;; la balle va sur le patch du receveur quand le rayon de perception du receveur voit la balle
         set cible nobody  
