@@ -4,8 +4,8 @@
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 
-globals [ roles service compteur-dom compteur-ext  ]
-turtles-own [ role pos puissance ]
+globals [ roles service compteur-dom compteur-ext en-jeu ]
+turtles-own [ role pos puissance taux-precision taux-echec rate? ]
 balles-own [ cible nb-passes speed camp altitude]
 
 
@@ -18,6 +18,7 @@ to setup
   
   set compteur-dom 0
   set compteur-ext 10
+  set en-jeu true
   
   
   ;; Créer le terrain de volley avec les lignes de sorties, de 3 mètres et le filet en blanc
@@ -50,14 +51,16 @@ to setup
     set color red
     setxy random-xcor random-ycor
     set size 4
-    set puissance (random (puissance-max-dom - 5) + 5) ;; pour ne pas avoir de gros écarts
+    set puissance (random (puissance-max-dom - 10) + 10) ;; pour ne pas avoir de gros écarts
+    set taux-echec (random taux-echec-max-dom - 1) + 1
   ]
   
   create-joueurs-ext 6 [
     set color green
     setxy random-xcor random-ycor
     set size 4
-    set puissance (random (puissance-max-ext - 5) + 5)
+    set puissance (random (puissance-max-ext - 10) + 10)
+    set taux-echec (random taux-echec-max-ext - 1) + 1
   ]
   
   create-balles 1 [
@@ -87,9 +90,12 @@ end
 
 to go
   
+  ifelse en-jeu = true [
   servir
   passer
   move-balle
+  ] [
+  ]
   
   tick
 end
@@ -127,16 +133,35 @@ end
 to vitesse-balle [joueur]
   ask balles [
     set speed (speed * (1 + ([puissance] of joueur) * 0.01 )) ;; vitesse propre à chaque joueur
-    if ([role] of joueur = "R4") or ([role] of joueur = "R2") [
-      show("test")
-      set speed (speed + 3) ;; augmentation de la vitesse pour les attaquants
-    ]
-    ifelse service != "" [
-      set speed (speed + 0.5) ;; augmentation de la vitesse pour le serveur
+    ifelse ([role] of joueur = "R4") or ([role] of joueur = "R2") [
+      set speed (speed + 0.5) ;; augmentation de la vitesse pour les attaquants
     ] [
-      set speed (0.5 * (1 + ([puissance] of joueur) * 0.01 )) ;; sinon revient à la vitesse propre du joueur
+      ifelse service != "" and [role] of joueur = "R1" [
+        set speed (speed + 0.5) ;; augmentation de la vitesse pour le serveur
+      ] [
+        set speed (0.5 * (1 + ([puissance] of joueur) * 0.01 )) ;; sinon revient à la vitesse propre du joueur
+      ]
     ]
   ]
+end
+
+;; Fonction qui détermine si le joueur renvoie la balle ou non
+to rater [joueur]
+  
+  ;; Reception
+
+  let echec random 100
+    ;; Cas où le joueur rate sa reception
+    show([taux-echec] of joueur)
+    ifelse echec <= [taux-echec] of joueur [
+      set rate? true
+    ] [
+      set rate? false
+    ]
+  
+      
+      
+    
 end
 
 to servir
@@ -230,22 +255,23 @@ to passer
     let porteur one-of other turtles-here
     if porteur != nobody and cible = nobody [
       vitesse-balle porteur
-      passer-adversaire ;; vérifie si le nb de passes max est effectué pour envoyer la balle dans le camp adverse
       
+      rater porteur
+      
+      ifelse rate? = false [
+        passer-adversaire ;; vérifie si le nb de passes max est effectué pour envoyer la balle dans le camp adverse
         ;; Reception des joueurs arrière -> passe au passeur R3
-        if [role] of porteur = "R1" [
+        if [role] of porteur = "R1" or [role] of porteur = "R6" or [role] of porteur = "R5" [
           passer-passeur
         ]
-        if [role] of porteur = "R5" [
-          passer-passeur
-        ]
-        if [role] of porteur = "R6" [
-          passer-passeur
-        ]
+
         ;; Passe la balle a l'attaquant avec proba = 0.5
         if [role] of porteur = "R3" [
             passer-attaquant
         ]
+      ]
+      [ set speed 0
+        set en-jeu false ]
     ]
   ]
 end
@@ -263,6 +289,9 @@ to passer-passeur
       set cible receveur
       set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
     ]
+ 
+    
+    
     
   ]
 end
@@ -327,7 +356,7 @@ to move-balle
     if cible != nobody [
       face [pos] of cible
       fd speed
-      if distance [pos] of cible < 0.5 [
+      if distance [pos] of cible < 1 [
         move-to [pos] of cible ;; la balle va sur le patch du receveur quand le rayon de perception du receveur voit la balle
         set cible nobody  
       ]
@@ -336,17 +365,19 @@ to move-balle
 end]]></code>
   <widgets>
     <view x="515" wrappingAllowedX="false" y="45" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="false" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
-    <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="75.0" variable="puissance-max-dom"></slider>
-    <slider x="310" step="1" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="0" direction="Horizontal" default="75.0" variable="puissance-max-ext"></slider>
+    <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="30.0" variable="puissance-max-dom"></slider>
+    <slider x="310" step="5" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="20" direction="Horizontal" default="100.0" variable="puissance-max-ext"></slider>
     <button x="265" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
     <button x="175" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
     <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="50.0" variable="precision-max-ext"></slider>
-    <slider x="20" step="1" y="170" max="100" width="165" display="précision-max-dom" height="50" min="0" direction="Horizontal" default="50.0" variable="précision-max-dom"></slider>
+    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="50.0" variable="precision-max-dom"></slider>
     <monitor x="45" precision="17" y="40" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
     <monitor x="355" precision="17" y="40" height="60" fontSize="11" width="100" display="     Exterieur">compteur-ext</monitor>
     <note x="45" y="10" backgroundDark="-2674135" fontSize="12" width="115" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe domicile</note>
     <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="120" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe extérieur</note>
+    <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="6.0" variable="taux-echec-max-dom"></slider>
+    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="10.0" variable="taux-echec-max-ext"></slider>
   </widgets>
   <info>## WHAT IS IT?
 
