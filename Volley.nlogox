@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.2" snapToGrid="true">
-  <code><![CDATA[breed [ joueurs-dom joueur-dom ]
+  <code><![CDATA[
+breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 
 globals [ roles service compteur-dom compteur-ext en-jeu ]
 turtles-own [ role pos puissance taux-precision taux-echec rate? ]
-balles-own [ cible nb-passes speed camp altitude]
+balles-own [ cible nb-passes speed camp altitude precis decalage]
 
 
 to setup
@@ -53,6 +54,7 @@ to setup
     set size 4
     set puissance (random (puissance-max-dom - 10) + 10) ;; pour ne pas avoir de gros écarts
     set taux-echec (random taux-echec-max-dom - 1) + 1
+    set taux-precision precision-max-dom
   ]
   
   create-joueurs-ext 6 [
@@ -61,6 +63,7 @@ to setup
     set size 4
     set puissance (random (puissance-max-ext - 10) + 10)
     set taux-echec (random taux-echec-max-ext - 1) + 1
+    set taux-precision precision-max-ext
   ]
   
   create-balles 1 [
@@ -112,13 +115,8 @@ end
 
 to changement-service
   ask balles [
-    show([role] of joueur-ext 6)
-    show([role] of joueur-ext 7)
-    show([role] of joueur-ext 8)
-    show([role] of joueur-ext 9)
-    show([role] of joueur-ext 10)
-    show([role] of joueur-ext 11)
     set speed 0.5
+    set decalage 0
     ifelse camp = "gauche" [
       if service = "finiG" [
         tourner false
@@ -174,6 +172,27 @@ to tourner [dom?] ;; effectueur la rotation de l'équipe en changeant les rôles
   ] 
 end
 
+to-report determiner-joueur [num]
+  if (num = 0) or (num = 6) [
+    report "R1"
+  ]
+  if (num = 1) or (num = 7) [
+    report "R6"
+  ]
+  if (num = 2) or (num = 8) [
+    report "R5"
+  ]
+  if (num = 3) or (num = 9) [
+    report "R4"
+  ]
+  if (num = 4) or (num = 10) [
+    report "R3"
+  ]
+  if (num = 5) or (num = 11) [
+    report "R2"
+  ]
+end
+
 ;; Permet de placer les joueurs de gauche
 to placer-dom
   if role = "R3" [ set pos (patch -7 0) move-to pos ]
@@ -192,22 +211,6 @@ to placer-ext
   if role = "R6" [ set pos (patch 20 0) move-to pos ]
   if role = "R1" [ set pos (patch 22 9) move-to pos ]
   if role = "R5" [ set pos (patch 22 -9) move-to pos ]
-end
-
-;; Fonction qui détermine la vitesse de la balle pour chaque joueur (à mettre dans un ask joueur) en fonction de la puissance
-to vitesse-balle [joueur]
-  ask balles [
-    set speed (speed * (1 + ([puissance] of joueur) * 0.01 )) ;; vitesse propre à chaque joueur
-    ifelse ([role] of joueur = "R4") or ([role] of joueur = "R2") [
-      set speed (speed + 0.5) ;; augmentation de la vitesse pour les attaquants
-    ] [
-      ifelse service != "" and [role] of joueur = "R1" [
-        set speed (speed + 0.5) ;; augmentation de la vitesse pour le serveur
-      ] [
-        set speed (0.5 * (1 + ([puissance] of joueur) * 0.01 )) ;; sinon revient à la vitesse propre du joueur
-      ]
-    ]
-  ]
 end
 
 ;; Fonction qui détermine si le joueur renvoie la balle ou non
@@ -269,6 +272,8 @@ to servir
     
     
     vitesse-balle serveur ;; ajuste la vitesse du serveur
+    precision-balle serveur
+    decalage-balle
     
     ;; Partie 3 -> contact avec la balle
     ask balles [
@@ -333,6 +338,8 @@ to servir
     
     
     vitesse-balle serveur ;; ajuste la vitesse du serveur
+    precision-balle serveur
+    decalage-balle
     
     ;; Partie 3 -> contact avec la balle
     ask balles [
@@ -361,6 +368,8 @@ to passer
     let porteur one-of other turtles-here
     if porteur != nobody and cible = nobody [
       vitesse-balle porteur
+      precision-balle porteur
+      decalage-balle
       
       rater porteur
       
@@ -395,27 +404,6 @@ to passer-passeur
       set cible receveur
       set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
     ]  
-  ]
-end
-
-to-report determiner-joueur [num]
-  if (num = 0) or (num = 6) [
-    report "R1"
-  ]
-  if (num = 1) or (num = 7) [
-    report "R6"
-  ]
-  if (num = 2) or (num = 8) [
-    report "R5"
-  ]
-  if (num = 3) or (num = 9) [
-    report "R4"
-  ]
-  if (num = 4) or (num = 10) [
-    report "R3"
-  ]
-  if (num = 5) or (num = 11) [
-    report "R2"
   ]
 end
   
@@ -469,8 +457,38 @@ to passer-attaquant
           let receveur one-of joueurs-ext with [role = "R4"]
           set cible receveur
           set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+        
+        
         ]
     ]
+  ]
+end
+
+to decalage-balle 
+  ask balles [
+    let erreur-max erreur-max-base * (1 - (precis / 100))
+    set decalage (random-float (2 * erreur-max) - erreur-max)
+  ]
+end
+;; Fonction qui détermine la vitesse de la balle pour chaque joueur (à mettre dans un ask joueur) en fonction de la puissance
+to vitesse-balle [joueur]
+  ask balles [
+    set speed (speed * (1 + ([puissance] of joueur) * 0.01 )) ;; vitesse propre à chaque joueur
+    ifelse ([role] of joueur = "R4") or ([role] of joueur = "R2") [
+      set speed (speed + 0.5) ;; augmentation de la vitesse pour les attaquants
+    ] [
+      ifelse (service != "finiG" or service != "finiD") and [role] of joueur = "R1" [
+        set speed (speed + 0.5) ;; augmentation de la vitesse pour le serveur
+      ] [
+        set speed (0.5 * (1 + ([puissance] of joueur) * 0.01 )) ;; sinon revient à la vitesse propre du joueur
+      ]
+    ]
+  ]
+end
+
+to precision-balle [joueur]
+  ask balles [
+    set precis [taux-precision] of joueur
   ]
 end
     
@@ -478,9 +496,16 @@ end
 to move-balle
   ask balles [
     if cible != nobody [
-      face [pos] of cible
-      fd speed
+      ;; Rayon perception et rayon contact (le receveur commence à bouger quand la balle est dans son rayon de perception (si la balle arrive avant lui c'est point perdu)
+      if distance [pos] of cible > 0 [
+        ;; Calculer l'erreur max pour cette balle selon la précision du porteur
+        
+        set heading (towards [pos] of cible + decalage)
+        ;;face [pos] of cible
+        fd speed
+      ]
       if distance [pos] of cible < speed + 0.1 [
+        
         move-to [pos] of cible ;; la balle va sur le patch du receveur quand le rayon de perception du receveur voit la balle
         set cible nobody  
       ]
@@ -494,14 +519,16 @@ end]]></code>
     <button x="265" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
     <button x="175" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
-    <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="50.0" variable="precision-max-ext"></slider>
-    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="50.0" variable="precision-max-dom"></slider>
+    <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="41.0" variable="precision-max-ext"></slider>
+    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="52.0" variable="precision-max-dom"></slider>
     <monitor x="45" precision="17" y="40" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
     <monitor x="355" precision="17" y="40" height="60" fontSize="11" width="100" display="     Exterieur">compteur-ext</monitor>
     <note x="45" y="10" backgroundDark="-2674135" fontSize="12" width="115" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe domicile</note>
     <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="120" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe extérieur</note>
     <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="25.0" variable="taux-echec-max-dom"></slider>
-    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="25.0" variable="taux-echec-max-ext"></slider>
+    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="29.0" variable="taux-echec-max-ext"></slider>
+    <slider x="135" step="1" y="315" max="30" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="30.0" variable="erreur-max-base"></slider>
+    <slider x="135" step="0.2" y="375" max="3" width="250" display="rayon-perception" height="50" min="0" direction="Horizontal" default="2.0" variable="rayon-perception"></slider>
   </widgets>
   <info>## WHAT IS IT?
 
