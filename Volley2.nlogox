@@ -244,7 +244,7 @@ to servir
   let chance-type-service-normal 0 
   let chance-type-service-flotant 0 
   
-  let chance-type-service random-float 100
+  
   
   let type-service ""
     
@@ -261,42 +261,26 @@ to servir
   ;; ------------------------------------- Faire un type de service selon la préférence du joueur - "smashe" "normal" ou "flotant" -------------------------------------------
   
   ;; Définir les serveurs
-  if service = "gauche" [ set serveur one-of joueurs-dom with [role = "R1"] ]
-  if service = "droite" [ set serveur one-of joueurs-ext with [role = "R1"] ]
+  if service = "gauche" [ 
+    set serveur one-of joueurs-dom with [role = "R1"]
+    set chance-type-service-smashe  chance-service-smashe-dom
+    set chance-type-service-flotant random 100 + chance-type-service-smashe
+  ]
+  if service = "droite" [ 
+    set serveur one-of joueurs-ext with [role = "R1"]
+    set chance-type-service-smashe  chance-service-smashe-ext
+    set chance-type-service-flotant random 100 + chance-type-service-smashe
+  ]
   
   let puissance-initiale [puissance] of serveur
   
-  ;; Préférence a un service smashe 
-  if [type-service-pref] of serveur = 0 [
-    set chance-type-service-smashe 60
-    set chance-type-service-normal random 100 + 60
-
-    
-    if chance-type-service <= chance-type-service-smashe [ set type-service "smashe" ]
-    if chance-type-service > chance-type-service-smashe and chance-type-service <= chance-type-service-normal [ set type-service "normal" ]
-    if chance-type-service > chance-type-service-normal [ set type-service "flotant" ]
-
-  ]
   
-  ;; Préférence a un service normal
-  if [type-service-pref] of serveur = 1[
-    set chance-type-service-normal 60
-    set chance-type-service-flotant random 100 + 60
-    
-    if chance-type-service <= chance-type-service-normal [ set type-service "normal" ]
-    if chance-type-service > chance-type-service-normal and chance-type-service <= chance-type-service-flotant [ set type-service "flotant" ]
-    if chance-type-service > chance-type-service-flotant [ set type-service "smashe" ]
-  ]
+  let chance-type-service random 100
+  if chance-type-service <= chance-type-service-smashe [ set type-service "smashe" ]
+  if chance-type-service > chance-type-service-smashe and chance-type-service <= chance-type-service-flotant [ set type-service "flotant" ]
+  if chance-type-service > chance-type-service-flotant [ set type-service "normal" ]
+
   
-  ;; Préférence a un service flotant
-  if [type-service-pref] of serveur = 2[
-    set chance-type-service-flotant 60
-    set chance-type-service-smashe random 100 + 60
-    
-    if chance-type-service <= chance-type-service-flotant [ set type-service "flotant" ]
-    if chance-type-service > chance-type-service-flotant and chance-type-service <= chance-type-service-smashe [ set type-service "smashe" ]
-    if chance-type-service > chance-type-service-smashe [ set type-service "normal" ]
-  ]
   
   
     
@@ -326,7 +310,7 @@ to servir
   
   if service = "droite" [
     
-    if type-service = "shashe" [
+    if type-service = "smashe" [
       set pos-serveur patch 47 9
       set pos-contact patch 37 9
       
@@ -556,11 +540,19 @@ end
 to move-balle
   ask balles [
     if cible != nobody [
+      let dec decalage
+      let d distance cible
       ;; Rayon perception et rayon contact (le receveur commence à bouger quand la balle est dans son rayon de perception (si la balle arrive avant lui c'est point perdu)
-      if distance [pos] of cible > 0 [
+      if d > 0 [
+        if d < rayon-perception [
+          ask cible [ 
+            set heading (towards myself + dec) 
+            fd 0.5
+          ]
+          
+        ]
         ;; Calculer l'erreur max pour cette balle selon la précision du porteur*
-        let cible-x (xcor of cible)
-        let cible-y (ycor of cible
+        set heading (towards [pos] of cible + decalage)
 
         ;;face [pos] of cible
         fd speed
@@ -574,7 +566,7 @@ to move-balle
   ]
 end]]></code>
   <widgets>
-    <view x="5" wrappingAllowedX="false" y="460" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="12.0" fontSize="10" wrappingAllowedY="false" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
+    <view x="490" wrappingAllowedX="false" y="5" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="12.0" fontSize="10" wrappingAllowedY="false" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
     <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="65.0" variable="puissance-max-dom"></slider>
     <slider x="310" step="5" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="20" direction="Horizontal" default="70.0" variable="puissance-max-ext"></slider>
     <button x="265" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
@@ -588,8 +580,10 @@ end]]></code>
     <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="120" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe extérieur</note>
     <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="25.0" variable="taux-echec-max-dom"></slider>
     <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="29.0" variable="taux-echec-max-ext"></slider>
-    <slider x="135" step="1" y="315" max="30" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="30.0" variable="erreur-max-base"></slider>
-    <slider x="135" step="0.2" y="375" max="3" width="250" display="rayon-perception" height="50" min="0" direction="Horizontal" default="2.0" variable="rayon-perception"></slider>
+    <slider x="145" step="0.2" y="485" max="3" width="250" display="rayon-perception" height="50" min="0" direction="Horizontal" default="2.0" variable="rayon-perception"></slider>
+    <slider x="145" step="1" y="430" max="30" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="30.0" variable="erreur-max-base"></slider>
+    <slider x="20" step="1" y="295" max="100" width="165" display="chance-service-smashe-dom" height="50" min="0" direction="Horizontal" default="100.0" variable="chance-service-smashe-dom"></slider>
+    <slider x="310" step="1" y="295" max="100" width="150" display="chance-service-smashe-ext" height="50" min="0" direction="Horizontal" default="100.0" variable="chance-service-smashe-ext"></slider>
   </widgets>
   <info>## WHAT IS IT?
 
