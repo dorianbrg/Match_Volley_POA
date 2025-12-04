@@ -6,7 +6,7 @@ breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 
 globals [ roles service compteur-dom compteur-ext en-jeu revenir-pos? victoire? type-service ]
-turtles-own [ role pos puissance taux-precision taux-echec rate? type-service-pref ]
+turtles-own [ role pos puissance taux-precision taux-echec rate? ]
 balles-own [ cible nb-passes speed camp precis decalage direction-fixe ]
 
 
@@ -55,10 +55,9 @@ to setup
     set color red
     setxy random-xcor random-ycor
     set size 4
-    set puissance (random (puissance-max-dom - 10) + 10) ;; pour ne pas avoir de gros écarts
+    set puissance (random (puissance-max-dom - 19) + 19) ;; pour ne pas avoir de gros écarts
     set taux-echec (random taux-echec-max-dom - 1) + 1
-    set taux-precision precision-max-dom
-    set type-service-pref random 2
+    set taux-precision (random precision-max-dom - 1) + 1
   ]
   
   create-joueurs-ext 6 [
@@ -67,8 +66,7 @@ to setup
     set size 4
     set puissance (random (puissance-max-ext - 10) + 10)
     set taux-echec (random taux-echec-max-ext - 1) + 1
-    set taux-precision precision-max-ext
-    set type-service-pref random 2
+    set taux-precision (random precision-max-ext - 1) + 1
   ]
   
   create-balles 1 [
@@ -626,24 +624,24 @@ end
 ]]></code>
   <widgets>
     <view x="490" wrappingAllowedX="false" y="5" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="12.0" fontSize="10" wrappingAllowedY="false" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
-    <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="65.0" variable="puissance-max-dom"></slider>
-    <slider x="310" step="5" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="20" direction="Horizontal" default="70.0" variable="puissance-max-ext"></slider>
+    <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="60.0" variable="puissance-max-dom"></slider>
+    <slider x="310" step="5" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="20" direction="Horizontal" default="65.0" variable="puissance-max-ext"></slider>
     <button x="265" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
     <button x="175" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
     <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="46.0" variable="precision-max-ext"></slider>
-    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="37.0" variable="precision-max-dom"></slider>
-    <monitor x="45" precision="17" y="40" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
+    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="26.0" variable="precision-max-dom"></slider>
     <monitor x="355" precision="17" y="40" height="60" fontSize="11" width="100" display="     Exterieur">compteur-ext</monitor>
-    <note x="45" y="10" backgroundDark="-2674135" fontSize="12" width="115" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe domicile</note>
-    <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="120" markdown="false" height="25" textColorDark="-1" textColorLight="-1" backgroundLight="0">Equipe extérieur</note>
     <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="0.0" variable="taux-echec-max-dom"></slider>
     <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="0.0" variable="taux-echec-max-ext"></slider>
-    <slider x="145" step="1" y="485" max="20" width="250" display="rayon-perception" height="50" min="0" direction="Horizontal" default="9.0" variable="rayon-perception"></slider>
-    <slider x="145" step="1" y="430" max="30" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="15.0" variable="erreur-max-base"></slider>
-    <slider x="20" step="1" y="295" max="100" width="165" display="chance-service-smashe-dom" height="50" min="0" direction="Horizontal" default="0.0" variable="chance-service-smashe-dom"></slider>
-    <slider x="310" step="1" y="295" max="100" width="150" display="chance-service-smashe-ext" height="50" min="0" direction="Horizontal" default="0.0" variable="chance-service-smashe-ext"></slider>
-    <slider x="145" step="1" y="545" max="10" width="250" display="rayon-contact" height="50" min="1" direction="Horizontal" default="4.0" variable="rayon-contact"></slider>
+    <monitor x="45" precision="17" y="40" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
+    <note x="50" y="10" backgroundDark="-2674135" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="16711680">Equipe domicile</note>
+    <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="65305">Equipe extérieur</note>
+    <slider x="20" step="1" y="295" max="100" width="200" display="chance-service-smashe-dom" height="50" min="0" direction="Horizontal" default="0.0" variable="chance-service-smashe-dom"></slider>
+    <slider x="265" step="1" y="295" max="100" width="195" display="chance-service-smashe-ext" height="50" min="0" direction="Horizontal" default="0.0" variable="chance-service-smashe-ext"></slider>
+    <slider x="120" step="1" y="390" max="30" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="15.0" variable="erreur-max-base"></slider>
+    <slider x="120" step="1" y="450" max="20" width="250" display="rayon-perception" height="50" min="0" direction="Horizontal" default="9.0" variable="rayon-perception"></slider>
+    <slider x="125" step="1" y="510" max="10" width="250" display="rayon-contact" height="50" min="1" direction="Horizontal" default="4.0" variable="rayon-contact"></slider>
   </widgets>
   <info>## WHAT IS IT?
 
