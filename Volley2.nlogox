@@ -5,7 +5,7 @@ breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 
-globals [ roles service compteur-dom compteur-ext en-jeu revenir-pos? victoire? type-service precision-service puissance-service ]
+globals [ roles service compteur-dom compteur-ext en-jeu victoire? type-service ]
 turtles-own [ role pos puissance taux-precision taux-echec rate? ]
 balles-own [ cible nb-passes speed camp precis decalage direction-fixe ]
 
@@ -15,12 +15,16 @@ to setup
   no-display ;; sinon la vue graphique est modifié après chaque agent modifié, ce qui crée des gros ralentissement dans le setup
   
   set roles [ "R1" "R6" "R5" "R4" "R3" "R2" ]
-  set service "gauche"
+  ifelse random-float 1 < 0.5 [ ;; Choisis aléatoirement la première équipe serveuse
+    set service "gauche"
+  ] [
+    set service "droite"
+  ]
   
+  ;; Initialisation des variables globales
   set compteur-dom 0
   set compteur-ext 0
   set en-jeu true
-  set revenir-pos? false
   set victoire? false
   set type-service ""
   
@@ -80,6 +84,7 @@ to setup
   ]
   
   attribuer-roles
+  ;; Placement des joueurs
   ask joueurs-dom [ placer-dom ]
   ask joueurs-ext [ placer-ext ]
   
@@ -87,12 +92,17 @@ to setup
   ask joueurs-dom with [ role = "R6" ] [ set color pink ]
   ask joueurs-ext with [ role = "R6" ] [ set color yellow ]
   
-  ask balles [ move-to one-of joueurs-dom with [role = "R1"] ] ;; on place la balle sur joueur 0
-  
+  ifelse service = "gauche" [
+    ask balles [ move-to one-of joueurs-dom with [role = "R1"] ] ;; on place la balle sur le serveur de l'équipe qui sert en premier
+  ] [
+    ask balles [ move-to one-of joueurs-ext with [role = "R1"] ] ;; on place la balle sur le serveur de l'équipe qui sert en premier
+  ]
+    
   reset-ticks
   display ;; dessine la vue graphique à la fin, donc seulement pour l'état final
 end
 
+;; Fonction qui détermine si une équipe a gagné
 to victoire
   if (compteur-dom >= 25) and (compteur-dom > compteur-ext + 1) [
     show("Victoire de l'équipe Rouge")
@@ -104,36 +114,23 @@ to victoire
   ]
 end
 
-to celebration [agent-set]
-  ask agent-set [
-    if (pcolor = brown) or (pcolor = blue) [
-      set xcor xcor + random-float 1 - 0.5
-      set ycor ycor + random-float 1 - 0.5
-    ]
-  ]
-end
-
 to go
-  victoire
+  victoire ;; Vérification de victoire
   ifelse en-jeu = true [
-  if service = "gauche" or service = "droite" [ servir ]
-  passer
-  
-  move-balle
-    
+    servir
+    passer
+    move-balle
   ] [
   changement-service
   set en-jeu true
   ]
-  if victoire? [ stop ]
+  
+  if victoire? [ stop ] ;; On arête la partie sinon
   tick
 end
 
-
-
-
-
-to attribuer-roles ;; parcours la variable globale roles pour attribuer un role à chaque joueur
+;; Fonction qui parcours la la variable globale roles pour attribuer un role à chaque joueur
+to attribuer-roles
   let i 0
   while [ i < length roles ] [
       ask joueur-ext (i + 6) [ set role (item i roles) ] ;; les agents 6 à 12 sont les joueurs-ext (role variable commune à tous les joueurs)
@@ -142,8 +139,8 @@ to attribuer-roles ;; parcours la variable globale roles pour attribuer un role 
   ]
 end
 
-
-to tourner [dom?] ;; effectueur la rotation de l'équipe en changeant les rôles puis en les replaçant
+;; Fonction qui effectue la rotation de l'équipe en changeant les rôles puis en les replaçant
+to tourner [dom?]
   let n (length roles)
   ifelse dom? [
     let i 0
@@ -162,6 +159,8 @@ to tourner [dom?] ;; effectueur la rotation de l'équipe en changeant les rôles
   ] 
 end
 
+
+;; Fonction qui détermine le role d'un joueur par rapport à son numéro dans sa création
 to-report determiner-joueur [num]
   if (num = 0) or (num = 6) [
     report "R1"
@@ -205,23 +204,21 @@ end
 
 ;; Fonction qui détermine si le joueur renvoie la balle ou non
 to rater [joueur agent-set]
-  
-  ;; Reception
   let echec random 100
   let dec [decalage] of one-of agent-set
   let speed-balle [speed] of one-of agent-set
   
-    ;; Cas où le joueur rate sa reception
+  ;; Cas où le joueur rate sa réception
   ifelse echec < ( ([taux-echec] of joueur + 1.5 * (abs dec)) * (speed-balle) ) [
       set rate? true
       set nb-passes 0
-    
     ] [
       set rate? false
     ]
   
 end
 
+;; Fonction qui détermine quelle équipe obtient le service
 to changement-service
   ask balles [
     set speed 0.5
@@ -230,13 +227,10 @@ to changement-service
       if service = "finiG" [
         tourner false
       ]
-      
       move-to one-of joueurs-ext with [role = "R1"]
       set camp "droite"
       set service "droite"
       set compteur-ext compteur-ext + 1
-      
-      
     ]
     [
       if service = "finiD" [
@@ -247,197 +241,174 @@ to changement-service
       set service "gauche"
       set compteur-dom compteur-dom + 1
     ]
-    
   ]
 end
 
 to servir
-  
-  ;; Déclaration de qqes variables pour la variation de service
-  let chance-type-service-smashe 0
-  let chance-type-service-normal 0 
-  let chance-type-service-flotant 0 
-  
-  
+  if service = "gauche" or service = "droite" [
+    ;; Déclaration de qqes variables pour la variation de service
+    let chance-type-service-smashe 0
+    let chance-type-service-normal 0 
+    let chance-type-service-flotant 0 
     
-  
-  ;; Déclaration de variable pour le service
-  let serveur nobody
-  let pos-serveur patch 0 0 
-  let pos-contact patch 0 0
-  let chance-passe 0
-  let receveur nobody
-  
-
-  
-  ;; ------------------------------------- Faire un type de service selon la préférence du joueur - "smashe" "normal" ou "flotant" -------------------------------------------
-  
-  ;; Définir les serveurs
-  if service = "gauche" [ 
-    set serveur one-of joueurs-dom with [role = "R1"]
-    set chance-type-service-smashe  chance-service-smashe-dom
-    set chance-type-service-flotant random 100 + chance-type-service-smashe
-  ]
-  if service = "droite" [ 
-    set serveur one-of joueurs-ext with [role = "R1"]
-    set chance-type-service-smashe  chance-service-smashe-ext
-    set chance-type-service-flotant random 100 + chance-type-service-smashe
-  ]
-  
-  let puissance-initiale [puissance] of serveur
-  
-  
-  let chance-type-service random 100
-  if chance-type-service <= chance-type-service-smashe [ set type-service "smashe" ]
-  if chance-type-service > chance-type-service-smashe and chance-type-service <= chance-type-service-flotant [ set type-service "flotant" ]
-  if chance-type-service > chance-type-service-flotant [ set type-service "normal" ]
-
-  
-  
-  
+    ;; Déclaration de variables pour le service
+    let serveur nobody
+    let pos-serveur patch 0 0 
+    let pos-contact patch 0 0
+    let chance-passe 0
+    let receveur nobody
     
-  
-  ;; Vérifier si le service est à gauche ou à droite
-  if service = "gauche" [
-    if type-service = "smashe" [
-      set pos-serveur patch -47 -9
-      set pos-contact patch -37 -9
+    ;; Définir le serveur selon le côté
+    if service = "gauche" [ 
+      set serveur one-of joueurs-dom with [role = "R1"]
+      set chance-type-service-smashe chance-service-smashe-dom
+      set chance-type-service-flotant random 100 + chance-type-service-smashe
     ]
     
-    if type-service = "normal" [
-      set pos-serveur patch -34 -9
-      set pos-contact patch -32 -9
+    if service = "droite" [ 
+      set serveur one-of joueurs-ext with [role = "R1"]
+      set chance-type-service-smashe chance-service-smashe-ext
+      set chance-type-service-flotant random 100 + chance-type-service-smashe
     ]
     
-    if type-service = "flotant" [
-      set pos-serveur patch -40 -9
-      set pos-contact patch -32 -9
+    let puissance-initiale [puissance] of serveur
+    
+    ;; Déterminer le type de service
+    let chance-type-service random 100
+    if chance-type-service <= chance-type-service-smashe [
+      set type-service "smashe"
+    ]
+    if chance-type-service > chance-type-service-smashe and chance-type-service <= chance-type-service-flotant [
+      set type-service "flotant"
+    ]
+    if chance-type-service > chance-type-service-flotant [
+      set type-service "normal"
     ]
     
-    set chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
-    set receveur one-of joueurs-ext with [role = (determiner-joueur chance-passe)]
-  ]
-  
-  if service = "droite" [
-    
-    if type-service = "smashe" [
-      set pos-serveur patch 47 9
-      set pos-contact patch 37 9
-      
-      ask serveur [ set puissance (puissance + 60) ]
+    ;; Définir positions serveur/contact et receveur selon le côté et type de service
+    if service = "gauche" [
+      if type-service = "smashe" [
+        set pos-serveur patch -47 -9
+        set pos-contact patch -37 -9
+      ]
+      if type-service = "normal" [
+        set pos-serveur patch -34 -9
+        set pos-contact patch -32 -9
+      ]
+      if type-service = "flotant" [
+        set pos-serveur patch -40 -9
+        set pos-contact patch -32 -9
+      ]
+      set chance-passe random 2 ;; Choix aléatoire du receveur
+      set receveur one-of joueurs-ext with [role = (determiner-joueur chance-passe)]
     ]
     
-    if type-service = "normal" [
-      set pos-serveur patch 34 9
-      set pos-contact patch 32 9
+    if service = "droite" [
+      if type-service = "smashe" [
+        set pos-serveur patch 47 9
+        set pos-contact patch 37 9
+      ]
+      if type-service = "normal" [
+        set pos-serveur patch 34 9
+        set pos-contact patch 32 9
+      ]
+      if type-service = "flotant" [
+        set pos-serveur patch 40 9
+        set pos-contact patch 32 9
+      ]
+      set chance-passe random 2 ;; Choix aléatoire du receveur
+      set receveur one-of joueurs-dom with [role = (determiner-joueur chance-passe)]
     ]
     
-    if type-service = "flotant" [
-      set pos-serveur patch 40 9
-      set pos-contact patch 32 9
-    ]
-    
-    set chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
-    set receveur one-of joueurs-dom with [role = (determiner-joueur chance-passe)]
-  ]
-  
-  
-    
-    
-    ;; Partie 1 -> amener le joueur sur le patch pour servir avec la balle
+    ;; Partie 1 -> Amener le serveur sur le patch pour servir avec la balle
     ask serveur [
       while [distance pos-serveur > 0.5] [
         face pos-serveur
         fd 0.5
-        set pos patch-here   ;; Remettre à jour la position du joueur
+        set pos patch-here ;; Mise à jour position
         
-        ask balles [ 
-        set cible serveur
-        definir-direction
+        ask balles [
+          set cible serveur
+          definir-direction
         ]
         
         move-balle
       ]
-      ;; bien mettre les agents sur le bon patch quand ils sont proches de ce dernier
+      ;; Placer agents précisément sur le patch
       move-to pos-serveur
       ask balles [ move-to pos-serveur ]
-    
     ]
     
-    
-    ;; Partie 2 -> lancer de la balle 
+    ;; Partie 2 -> Lancer de la balle
     ask balles [
-      set speed 0.25 ;; La balle va moins vite, il s'agit d'un lancer en cloche
+      set speed 0.25 ;; Lancer en cloche
       while [distance pos-contact > 0.2] [
-        
         face pos-contact
         fd speed
         
-        if distance pos-contact < 5 [ ;; Le serveur commence sa course d'élan pour le service à moitié de distance du lancer de balle
+        if distance pos-contact < 5 [
+          ;; Le serveur commence sa course d'élan
           ask serveur [
-            face pos-contact 
+            face pos-contact
             fd 0.5
           ]
         ]
       ]
     ]
     
-    
-    vitesse-balle serveur ;; ajuste la vitesse du serveur
+    vitesse-balle serveur ;; Ajuste vitesse
     precision-balle serveur
     decalage-balle
     
-    ;; Partie 3 -> contact avec la balle
+    ;; Partie 3 -> Contact avec la balle
     ask balles [
       set cible receveur
-    
       definir-direction
-    
+      
       if service = "gauche" [
-         set camp "droite"
-         set service "finiG"
+        set camp "droite"
+        set service "finiG"
       ]
-    
-    if service = "droite" [
-         set camp "gauche"
-         set service "finiD"
+      
+      if service = "droite" [
+        set camp "gauche"
+        set service "finiD"
       ]
-    
-    
     ]
     
-    ask serveur [ 
-    if service = "finiG" [ set pos (patch -22 -9) ]
-    if service = "finiD" [ set pos (patch 22 9) ]
-    set puissance (puissance-initiale)
-      while [ distance pos > 0.3 ] [
+    ;; Repositionnement du joueur à sa place pendant que la balle va vers sa cible
+    ask serveur [
+      if service = "finiG" [ set pos patch -22 -9 ]
+      if service = "finiD" [ set pos patch 22 9 ]
+      
+      while [distance pos > 0.3] [
         face pos
         fd 0.3
         move-balle
       ]
       move-to pos
     ]
-  set type-service ""
- 
- 
+    
+    set type-service ""
+  ]
 end
 
+;; Fonction qui détermine la direction de la balle en tenant d'un décalage dû à la précision du porteur
 to definir-direction
   face [pos] of cible
   right decalage
-  set direction-fixe heading   ;; <— ANGLE FIGÉ
+  set direction-fixe heading
 end
   
-;; Determiner sur quel joueur va aller la balle
+;; Fonction qui détermine la cible de la balle
 to passer
   ask balles [
-    let porteur one-of other turtles-here
+    let porteur one-of other turtles-here ;; On vérifie si une balle arrive sur un joueur
     if porteur != nobody and cible = nobody [
-      vitesse-balle porteur
-      precision-balle porteur
-      decalage-balle
+      vitesse-balle porteur ;; change la vitesse de la balle
+      precision-balle porteur ;; change la précision de la balle avec la précision du porteur
       
-      rater porteur balles
+      rater porteur balles ;; détermine si la passe/attaque va etre raté ou non
       show (word "Le taux d'échec du porteur: " [taux-echec] of porteur)
       
       ifelse rate? = false [
@@ -455,93 +426,86 @@ to passer
       [ set speed 0
         set en-jeu false ]
       
-      ask porteur [ revenir-position ]
+      ask porteur [ revenir-position ] 
+      decalage-balle ;; décalage de la balle à la fin car la précision peut etre inversé dans le cas ou le porteur fait une passe à l'équipe adverse
     ]
   ]
 end
 
-
 ;; Fonction qui passe la balle au passeur
 to passer-passeur
-  ask balles [ ;; Perspective de la balle
-    ifelse camp = "gauche" [
-      let receveur one-of joueurs-dom with [role = "R3"]
-      set cible receveur
-      definir-direction
-      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
-    ] [
-      let receveur one-of joueurs-ext with [role = "R3"]
-      set cible receveur
-      definir-direction
-      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
-    ]
-
+  ifelse camp = "gauche" [
+    let receveur one-of joueurs-dom with [role = "R3"]
+    set cible receveur
+    definir-direction
+    set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+  ] [
+    let receveur one-of joueurs-ext with [role = "R3"]
+    set cible receveur
+    definir-direction
+    set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
   ]
 end
   
 ;; Fonction qui permet à la balle de changer de camp en attaquant
 to passer-adversaire
   ;; Permet de renvoyer la balle dans le camp adverse ( aux joueurs défensifs )
-      let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
+  let chance-passe random 2 ;; Renvoie un nombre entre 0 et 2 qui correspond à un des trois joueurs de la ligne défensive
   
-      if nb-passes >= 2 and camp = "gauche" [
-        let receveur one-of joueurs-ext with [role = (determiner-joueur chance-passe)] ;; Les joueurs 6 à 8 sont les joueurs défensifs des joueurs extérieurs
-        set cible receveur
-        definir-direction
-        set nb-passes 0
-        set camp "droite" ;; La balle est mtn dans le camp droite
-      ]
-      
-      if nb-passes >= 2 and camp = "droite" [
-        let receveur one-of joueurs-dom with [role = (determiner-joueur chance-passe)]
-        set cible receveur
-        definir-direction
-        set nb-passes 0
-        set camp "gauche"
-      ]
+  if nb-passes >= 2 and camp = "gauche" [
+    let receveur one-of joueurs-ext with [role = (determiner-joueur chance-passe)] ;; Les joueurs 6 à 8 sont les joueurs défensifs des joueurs extérieurs
+    set cible receveur
+    definir-direction
+    set nb-passes 0
+    set camp "droite" ;; La balle est mtn dans le camp droite
+    set precis (100 - precis) ;; Inversion de la précision pour une balle qui change de camp
+  ]
+  
+  if nb-passes >= 2 and camp = "droite" [
+    let receveur one-of joueurs-dom with [role = (determiner-joueur chance-passe)]
+    set cible receveur
+    definir-direction
+    set nb-passes 0
+    set camp "gauche"
+    set precis (100 - precis)
+  ]
 end
-
 
 ;; Fonction qui determine l'attaquant
 to passer-attaquant
-  ask balles [
-    
-    ;; Par rapport au camp de gauche
-    ifelse camp = "gauche" [
-        let chance-passe random-float  1
-        ifelse chance-passe < 0.5 [
-           let receveur one-of joueurs-dom with [role = "R2"]
-           set cible receveur
-           definir-direction
-           set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
-      ] [
-           let receveur one-of joueurs-dom with [role = "R4"]
-           set cible receveur
-           definir-direction
-           set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
-         ]
-    ] 
-    
-    ;; Par rapport au camp de droite
-    [
-          let chance-passe random-float  1
-          ifelse chance-passe < 0.5 [
-          let receveur one-of joueurs-ext with [role = "R2"]
-          set cible receveur
-          definir-direction
-          set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
-       ] [
-          let receveur one-of joueurs-ext with [role = "R4"]
-          set cible receveur
-          definir-direction
-          set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
-        
-        
-        ]
+  ;; Par rapport au camp de gauche
+  ifelse camp = "gauche" [
+    let chance-passe random-float  1
+    ifelse chance-passe < 0.5 [
+      let receveur one-of joueurs-dom with [role = "R2"]
+      set cible receveur
+      definir-direction
+      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+    ] [
+      let receveur one-of joueurs-dom with [role = "R4"]
+      set cible receveur
+      definir-direction
+      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+    ]
+  ] 
+  ;; Par rapport au camp de droite
+  [
+    let chance-passe random-float  1
+    ifelse chance-passe < 0.5 [
+      let receveur one-of joueurs-ext with [role = "R2"]
+      set cible receveur
+      definir-direction
+      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
+    ] [
+      let receveur one-of joueurs-ext with [role = "R4"]
+      set cible receveur
+      definir-direction
+      set nb-passes nb-passes + 1 ;; Incrementer le nombre de passe
     ]
   ]
 end
 
+;; Fonction qui détermine le décalage de la balle par rapport à la cible en fonction de la précision du porteur
 to decalage-balle 
   ask balles [
     let erreur-max erreur-max-base * (1 - (precis / 100))
@@ -568,14 +532,18 @@ to vitesse-balle [joueur]
          if (type-service = "normal") [
           set speed (speed + 0.3) ;; augmentation de la vitesse pour le serveur
         ]
-              
+        
+        if (type-service = "") [
+         set speed (0.5 * (1 + ([puissance] of joueur) * 0.01 )) ;; sinon revient à la vitesse propre du joueur
+        ]   
       ] [
         set speed (0.5 * (1 + ([puissance] of joueur) * 0.01 )) ;; sinon revient à la vitesse propre du joueur
       ]
     ]
   ]
 end
-    
+
+;; Fonction qui affecte à la balle une précision et la modifie en fonction du type de service
 to precision-balle [joueur]
   ask balles [
     ifelse ((service != "finiG" and service != "finiD") and [role] of joueur = "R1") [
@@ -583,8 +551,8 @@ to precision-balle [joueur]
       set precis [taux-precision] of joueur
       
       if type-service = "smashe" [
-        if precis < 80 [
-          set precis precis + 15
+        if precis < 65 [
+          set precis precis + 35
         ]
       ]
       
@@ -606,6 +574,7 @@ to precision-balle [joueur]
   ]
 end
 
+;; Fonction qui permet au joueur de se repositionner après leur action
 to revenir-position
   while [ distance pos > 0.3 ] [
     face pos
@@ -620,14 +589,16 @@ to move-balle
   ask balles [
     if cible != nobody [
       let d distance [pos] of cible
+      
       ;; Rayon perception et rayon contact (le receveur commence à bouger quand la balle est dans son rayon de perception (si la balle arrive avant lui c'est point perdu)
       if d > 0 [
-        
+        ;; Cas ou la balle entre dans le rayon de perception de la cible
         if (d < rayon-perception) and (service = "finiG" or service = "finiD") [
           ask cible [
             face one-of balles
             fd 0.5
           ]
+          ;; Cas ou le joueur attrape la balle
           if distance cible < rayon-contact [
             move-to cible
             set speed 0
@@ -635,25 +606,36 @@ to move-balle
           ]
         ]
         
+        ;; Cas ou le joueur n'a pas pu attraper la balle
+        if (d > rayon-perception) and (camp = "droite") and (([pxcor] of [pos] of cible) < xcor) and (service = "finiG" or service = "finiD") [
+          ask cible [ revenir-position ]
+          set speed 0
+          set en-jeu false
+        ]
+        if (d > rayon-perception) and (camp = "gauche") and (([pxcor] of [pos] of cible) > xcor) and (service = "finiG" or service = "finiD") [
+          ask cible [ revenir-position ]
+          set speed 0
+          set en-jeu false
+        ]
         
-        ;; Calculer l'erreur max pour cette balle selon la précision du porteur*
+        ;; Calculer l'erreur max pour cette balle selon la précision du porteur
         set heading direction-fixe
         
-        ;; -- AJOUT : Zigzag pour service flottant --
+        ;; zigzag pour service flottant
         if type-service = "flotant" [
           set heading (heading + (random-float 60 - 30))   ;; petits zigzags
         ]
-        
         fd speed
       ]
+      
       if (service = "gauche" or service = "droite") and (distance [pos] of cible < speed + 0.1) [
-        
         move-to [pos] of cible  ;; la balle va sur le patch du receveur quand le rayon de perception du receveur voit la balle
         set cible nobody  
       ]
     ]
   ]
 end
+
 ]]></code>
   <widgets>
     <view x="490" wrappingAllowedX="false" y="5" frameRate="30.0" minPycor="-25" height="668" showTickCounter="true" patchSize="12.0" fontSize="10" wrappingAllowedY="false" width="1320" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
@@ -662,19 +644,19 @@ end
     <button x="265" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
     <button x="175" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
-    <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="46.0" variable="precision-max-ext"></slider>
-    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="26.0" variable="precision-max-dom"></slider>
+    <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="36.0" variable="precision-max-ext"></slider>
+    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="0.0" variable="precision-max-dom"></slider>
     <monitor x="355" precision="17" y="40" height="60" fontSize="11" width="100" display="     Exterieur">compteur-ext</monitor>
-    <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="0.0" variable="taux-echec-max-dom"></slider>
-    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="0.0" variable="taux-echec-max-ext"></slider>
+    <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="30.0" variable="taux-echec-max-dom"></slider>
+    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="2.0" variable="taux-echec-max-ext"></slider>
     <monitor x="45" precision="17" y="40" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
     <note x="50" y="10" backgroundDark="-2674135" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="16711680">Equipe domicile</note>
     <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="65305">Equipe extérieur</note>
-    <slider x="20" step="1" y="295" max="100" width="200" display="chance-service-smashe-dom" height="50" min="0" direction="Horizontal" default="50.0" variable="chance-service-smashe-dom"></slider>
-    <slider x="265" step="1" y="295" max="100" width="195" display="chance-service-smashe-ext" height="50" min="0" direction="Horizontal" default="49.0" variable="chance-service-smashe-ext"></slider>
-    <slider x="120" step="1" y="390" max="30" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="7.0" variable="erreur-max-base"></slider>
+    <slider x="20" step="1" y="295" max="100" width="200" display="chance-service-smashe-dom" height="50" min="0" direction="Horizontal" default="60.0" variable="chance-service-smashe-dom"></slider>
+    <slider x="265" step="1" y="295" max="100" width="195" display="chance-service-smashe-ext" height="50" min="0" direction="Horizontal" default="0.0" variable="chance-service-smashe-ext"></slider>
+    <slider x="120" step="1" y="390" max="15" width="250" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="6.0" variable="erreur-max-base"></slider>
     <slider x="120" step="1" y="450" max="20" width="250" display="rayon-perception" height="50" min="0" direction="Horizontal" default="15.0" variable="rayon-perception"></slider>
-    <slider x="125" step="1" y="510" max="10" width="250" display="rayon-contact" height="50" min="1" direction="Horizontal" default="4.0" variable="rayon-contact"></slider>
+    <slider x="125" step="1" y="510" max="10" width="250" display="rayon-contact" height="50" min="1" direction="Horizontal" default="2.0" variable="rayon-contact"></slider>
   </widgets>
   <info>## WHAT IS IT?
 
