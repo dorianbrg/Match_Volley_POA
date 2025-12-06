@@ -209,7 +209,7 @@ to rater [joueur agent-set]
   let speed-balle [speed] of one-of agent-set
   
   ;; Cas où le joueur rate sa réception
-  ifelse echec < ( ([taux-echec] of joueur + 1.5 * (abs dec)) * (speed-balle) ) [
+  ifelse echec < ( ([taux-echec] of joueur + 1.5 * (abs dec)) * (speed-balle + 0.5) ) [
       set rate? true
       set nb-passes 0
     ] [
@@ -656,10 +656,10 @@ end
     <button x="175" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
     <slider x="310" step="1" y="170" max="100" width="150" display="precision-max-ext" height="50" min="0" direction="Horizontal" default="13.0" variable="precision-max-ext"></slider>
-    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="15.0" variable="precision-max-dom"></slider>
+    <slider x="20" step="1" y="170" max="100" width="165" display="precision-max-dom" height="50" min="0" direction="Horizontal" default="12.0" variable="precision-max-dom"></slider>
     <monitor x="355" precision="17" y="40" height="60" fontSize="11" width="100" display="     Exterieur">compteur-ext</monitor>
     <slider x="20" step="1" y="235" max="100" width="165" display="taux-echec-max-dom" height="50" min="0" direction="Horizontal" default="27.0" variable="taux-echec-max-dom"></slider>
-    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="22.0" variable="taux-echec-max-ext"></slider>
+    <slider x="310" step="1" y="235" max="100" width="150" display="taux-echec-max-ext" height="50" min="0" direction="Horizontal" default="27.0" variable="taux-echec-max-ext"></slider>
     <monitor x="45" precision="17" y="40" height="60" fontSize="11" width="100" display="     Domicile">compteur-dom</monitor>
     <note x="50" y="10" backgroundDark="-2674135" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="16711680">Equipe domicile</note>
     <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="65305">Equipe extérieur</note>
