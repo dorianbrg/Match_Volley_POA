@@ -1,43 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.0" snapToGrid="true">
-  <code><![CDATA[
-breed [ joueurs-dom joueur-dom ]
+  <code><![CDATA[breed [ joueurs-dom joueur-dom ]
 breed [ joueurs-ext joueur-ext ]
 breed [ balles balle ]
 
-globals [ roles service compteur-dom compteur-ext en-jeu victoire? type-service nb-victoires-dom nb-victoires-ext ]
+globals [ roles service compteur-dom compteur-ext en-jeu victoire? type-service nb-victoires-dom nb-victoires-ext ticks-total ]
 turtles-own [ role pos puissance taux-precision taux-echec rate? ]
 balles-own [ cible nb-passes speed camp precis decalage direction-fixe ]
 
 to simuler-n [n]
   set nb-victoires-dom 0
   set nb-victoires-ext 0
+  set ticks-total 0
   
   let i 0
   while [i < n] [
 
-    ;; --- SAUVEGARDER les victoires avant setup ---
+    ;; Il faut sauvegarder les variables à risques avant le setup car clear-all les initialise à 0
     let vicD nb-victoires-dom
     let vicE nb-victoires-ext
+    let ticks-tot ticks-total
     
-    ;; setup va faire clear-all et remettre les globals à 0
     setup
     
-    ;; --- RESTAURER les victoires après le setup ---
+    ;; On les restaure
     set nb-victoires-dom vicD
     set nb-victoires-ext vicE
+    set ticks-total ticks-tot
     
-    ;; on joue ce match jusqu'à la victoire d'une équipe
     while [not victoire?] [
       go
     ]
     
-    ;; qui a gagné ce match ?
+    ;; On incrémente le nb victoire de l'équipe gagnante
     if compteur-dom > compteur-ext [
       set nb-victoires-dom nb-victoires-dom + 1
+      set ticks-total (ticks-total + ticks)
     ]
     if compteur-ext > compteur-dom [
       set nb-victoires-ext nb-victoires-ext + 1
+      set ticks-total (ticks-total + ticks)
     ]
     
     show (word "Match " (i + 1) " : Rouge " compteur-dom " - Vert " compteur-ext
@@ -47,6 +49,7 @@ to simuler-n [n]
   ]
   
   show (word "Bilan sur " n " matchs :")
+  show(word "Moyenne de ticks par match : " ( ticks-total / n ) )
   show (word "  Victoires Rouge : " nb-victoires-dom)
   show (word "  Victoires Vert : " nb-victoires-ext)
   update-plots
@@ -71,7 +74,7 @@ to setup
   set type-service ""
   
   
-  ;; Créer le terrain de volley avec les lignes de sorties, de 3 mètres et le filet en blanc
+  ;; Création du terrain de volley avec les lignes de sorties, de 3 mètres et le filet en blanc
   ask patches [
     if (pxcor >= -30 and pxcor <= 31) and (pycor >= -16 and pycor <= 16) [
       set pcolor blue
@@ -110,7 +113,7 @@ to setup
     set color green
     setxy random-xcor random-ycor
     set size 4
-    set puissance (random (puissance-max-ext - 10) + 10)
+    set puissance (random (puissance-max-ext - 19) + 19)
     set taux-echec (random taux-echec-max-ext - 1) + 1
     set taux-precision (random precision-max-ext - 1) + 1
   ]
@@ -144,7 +147,7 @@ to setup
   display ;; dessine la vue graphique à la fin, donc seulement pour l'état final
 end
 
-;; Fonction qui détermine si une équipe a gagné
+;; Fonction qui détermine si une équipe a gagné (avec les 2 points d'écart)
 to victoire
   if (compteur-dom >= 25) and (compteur-dom > compteur-ext + 1) [
     show("Victoire de l'équipe Rouge")
@@ -157,16 +160,15 @@ to victoire
 end
 
 to go
-  victoire ;; Vérification de victoire
   ifelse en-jeu = true [
     servir
     passer
     move-balle
   ] [
-  changement-service
-  set en-jeu true
+    changement-service
+    set en-jeu true
   ]
-  
+  victoire ;; Vérification de victoire
   if victoire? [ stop ] ;; On arête la partie sinon
   tick
 end
@@ -175,7 +177,7 @@ end
 to attribuer-roles
   let i 0
   while [ i < length roles ] [
-      ask joueur-ext (i + 6) [ set role (item i roles) ] ;; les agents 6 à 12 sont les joueurs-ext (role variable commune à tous les joueurs)
+      ask joueur-ext (i + 6) [ set role (item i roles) ] ;; les agents 5 à 11 sont les joueurs-ext (role variable commune à tous les joueurs)
       ask joueur-dom i [ set role (item i roles) ]
       set i i + 1
   ]
@@ -200,7 +202,6 @@ to tourner [dom?]
     ask joueurs-ext [ placer-ext ]
   ] 
 end
-
 
 ;; Fonction qui détermine le role d'un joueur par rapport à son numéro dans sa création
 to-report determiner-joueur [num]
@@ -251,8 +252,8 @@ to rater [joueur agent-set]
   let speed-balle [speed] of one-of agent-set
   
   ;; Cas où le joueur rate sa réception
-  show(word speed-balle)
-  ifelse echec < ( ([taux-echec] of joueur + 1.5 * (abs dec)) * (speed-balle + 0.5) ) [
+  ;;show (word "Vitesse de la balle:" speed-balle)
+  ifelse echec < ( ([taux-echec] of joueur + 1.5 * (abs dec)) * (speed-balle + 0.5) ) [ ;; formule qui permet d'augmenter le taux d'échec du receveur en fonction de la précision et de la vitesse de la balle
       set rate? true
       set nb-passes 0
     ] [
@@ -313,8 +314,6 @@ to servir
       set chance-type-service-smashe chance-service-smashe-ext
       set chance-type-service-flotant random 100 + chance-type-service-smashe
     ]
-    
-    let puissance-initiale [puissance] of serveur
     
     ;; Déterminer le type de service
     let chance-type-service random 100
@@ -387,7 +386,7 @@ to servir
     
     ;; Partie 2 -> Lancer de la balle
     ask balles [
-      set speed 0.25 ;; Lancer en cloche
+      set speed 0.25 ;; Lancer en cloche donc moins vite d'une vue du dessus
       while [distance pos-contact > 0.2] [
         face pos-contact
         fd speed
@@ -404,7 +403,7 @@ to servir
     
     vitesse-balle serveur ;; Ajuste vitesse
     precision-balle serveur
-    decalage-balle
+    decalage-balle ;; Ajuste le décalage de la balle en fonction de la précision
     
     ;; Partie 3 -> Contact avec la balle
     ask balles [
@@ -441,9 +440,9 @@ end
 
 ;; Fonction qui détermine la direction de la balle en tenant d'un décalage dû à la précision du porteur
 to definir-direction
-  face [pos] of cible
-  right decalage
-  set direction-fixe heading
+  face [pos] of cible ;; De base la balle va en direction de la cible
+  right decalage ;; Ajoute un décalage d'angle
+  set direction-fixe heading ;; Fixe la direction
 end
   
 ;; Fonction qui détermine la cible de la balle
@@ -455,7 +454,7 @@ to passer
       precision-balle porteur ;; change la précision de la balle avec la précision du porteur
       
       rater porteur balles ;; détermine si la passe/attaque va etre raté ou non
-      show (word "Le taux d'échec du porteur: " [taux-echec] of porteur)
+      ;;show (word "Le taux d'échec du porteur: " [taux-echec] of porteur)
       
       ifelse rate? = false [
         passer-adversaire ;; vérifie si le nb de passes max est effectué pour envoyer la balle dans le camp adverse
@@ -468,7 +467,7 @@ to passer
         if [role] of porteur = "R3" [
             passer-attaquant
         ]
-      ] [
+      ] [ ;; Si la passe a raté
         set speed 0
         set en-jeu false
         ifelse camp = "gauche" [
@@ -484,7 +483,7 @@ to passer
   ]
 end
 
-;; Fonction qui passe la balle au passeur
+;; Fonction qui définit la cible pour le passeur
 to passer-passeur
   ifelse camp = "gauche" [
     let receveur one-of joueurs-dom with [role = "R3"]
@@ -561,11 +560,11 @@ end
 to decalage-balle 
   ask balles [
     let erreur-max erreur-max-base * (1 - (precis / 100))
-    set decalage (random-float (2 * erreur-max) - erreur-max)
+    set decalage (random-float (2 * erreur-max) - erreur-max) ;; Erreur-max permet de fixer un angle max de décalage pour pas que le décalage soit aberrant
   ]
 end
 
-;; Fonction qui détermine la vitesse de la balle pour chaque joueur (à mettre dans un ask joueur) en fonction de la puissance
+;; Fonction qui détermine la vitesse de la balle pour chaque joueur en fonction de la puissance
 to vitesse-balle [joueur]
   ask balles [
     set speed (speed * (1 + ([puissance] of joueur) * 0.01 )) ;; vitesse propre à chaque joueur
@@ -664,12 +663,14 @@ to move-balle
           set speed 0
           set en-jeu false
           show("Le joueur vert a manqué la balle")
+          set cible nobody
         ]
         if (d > rayon-perception) and (camp = "gauche") and (([pxcor] of [pos] of cible) > xcor) and (service = "finiG" or service = "finiD") [
           ask cible [ revenir-position ]
           set speed 0
           set en-jeu false
           show("Le joueur rouge a manqué la balle")
+          set cible nobody
         ]
         
         ;; Calculer l'erreur max pour cette balle selon la précision du porteur
@@ -682,10 +683,6 @@ to move-balle
         fd speed
       ]
       
-      if (service = "gauche" or service = "droite") and (distance [pos] of cible < speed + 0.1) [
-        move-to [pos] of cible  ;; la balle va sur le patch du receveur quand le rayon de perception du receveur voit la balle
-        set cible nobody  
-      ]
     ]
   ]
 end
@@ -693,8 +690,8 @@ end
 ]]></code>
   <widgets>
     <view x="475" wrappingAllowedX="false" y="10" frameRate="30.0" minPycor="-25" height="521" showTickCounter="true" patchSize="10.15" fontSize="10" wrappingAllowedY="false" width="1029" tickCounterLabel="ticks" maxPycor="25" updateMode="0" maxPxcor="50" minPxcor="-50"></view>
-    <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="100.0" variable="puissance-max-dom"></slider>
-    <slider x="310" step="5" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="20" direction="Horizontal" default="25.0" variable="puissance-max-ext"></slider>
+    <slider x="20" step="5" y="105" max="100" width="165" display="puissance-max-dom" height="50" min="20" direction="Horizontal" default="55.0" variable="puissance-max-dom"></slider>
+    <slider x="310" step="5" y="105" max="100" width="150" display="puissance-max-ext" height="50" min="20" direction="Horizontal" default="55.0" variable="puissance-max-ext"></slider>
     <button x="265" y="45" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">go</button>
     <button x="175" y="45" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="66">setup
 </button>
@@ -708,7 +705,7 @@ end
     <note x="350" y="10" backgroundDark="-13840069" fontSize="12" width="95" markdown="false" height="25" textColorDark="-1" textColorLight="-16777216" backgroundLight="65305">Equipe extérieur</note>
     <slider x="20" step="1" y="295" max="100" width="200" display="chance-service-smashe-dom" height="50" min="0" direction="Horizontal" default="50.0" variable="chance-service-smashe-dom"></slider>
     <slider x="265" step="1" y="295" max="100" width="195" display="chance-service-smashe-ext" height="50" min="0" direction="Horizontal" default="50.0" variable="chance-service-smashe-ext"></slider>
-    <slider x="165" step="1" y="360" max="15" width="150" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="4.0" variable="erreur-max-base"></slider>
+    <slider x="165" step="1" y="360" max="15" width="150" display="erreur-max-base" height="50" min="0" direction="Horizontal" default="15.0" variable="erreur-max-base"></slider>
     <slider x="165" step="1" y="415" max="20" width="150" display="rayon-perception" height="50" min="0" direction="Horizontal" default="18.0" variable="rayon-perception"></slider>
     <slider x="165" step="1" y="470" max="10" width="150" display="rayon-contact" height="50" min="1" direction="Horizontal" default="2.0" variable="rayon-contact"></slider>
     <plot x="125" autoPlotX="true" yMax="100.0" autoPlotY="true" yAxis="% de victoire" y="535" xMin="0.0" height="175" legend="false" xMax="2.0" yMin="0.0" width="230" xAxis="Equipe" display="Proportion de victoires">
