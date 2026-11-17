@@ -1,93 +1,144 @@
-# Projet_POA
-
-
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+# 🏐 Simulation d'un match de volley-ball — NetLogo
+ 
+Simulation multi-agents d'un match de volley-ball entre deux équipes de six joueurs, réalisée en **NetLogo** dans le cadre du module *Introduction à la programmation Agent* (L2 Informatique, Faculté de Sciences, Vandœuvre-lès-Nancy).
+ 
+Chaque joueur et la balle sont des agents autonomes. Le modèle sert à étudier l'influence des caractéristiques des joueurs (puissance, précision, taux d'échec, type de service, perception) sur l'issue d'un match.
+ 
+**Auteurs :** Dorian Berger, Hector Bos
+ 
+---
+ 
+## Sommaire
+ 
+- [Aperçu](#aperçu)
+- [Installation et lancement](#installation-et-lancement)
+- [Paramètres](#paramètres)
+- [Fonctionnement du modèle](#fonctionnement-du-modèle)
+- [Résultats](#résultats)
+- [Limites du modèle](#limites-du-modèle)
+- [Structure du dépôt](#structure-du-dépôt)
+---
+ 
+## Aperçu
+ 
+- **Terrain** : vue du dessus, avec le filet (ligne blanche), les lignes des 3 mètres et les limites du terrain.
+- **Équipes** : *Domicile* en rouge (libéro en rose) et *Extérieur* en vert (libéro en jaune).
+- **Postes** : R1 à R6. R1 est le serveur, R3 le passeur, R2 et R4 les attaquants, R5 et R6 les défenseurs arrière.
+- **Règles reprises** : rotation des joueurs après la reprise du service, trois touches au maximum par camp, set gagné à 25 points avec 2 points d'écart.
+- **Services** : smash, flottant (trajectoire en zigzag) et normal.
+## Installation et lancement
+ 
+### Prérequis
+ 
+- [NetLogo](https://ccl.northwestern.edu/netlogo/) **7.0 ou plus récent** (le modèle est au format `.nlogox`).
+### Lancer un match
+ 
+1. Ouvrir `Projet_Volley_BERGER_BOS.nlogox` dans NetLogo.
+2. Régler les curseurs (voir [Paramètres](#paramètres)).
+3. Cliquer sur **setup** pour placer les joueurs et tirer au sort l'équipe qui sert.
+4. Cliquer sur **go** pour lancer le match. Il s'arrête de lui-même dès qu'une équipe a gagné.
+Les compteurs *Domicile* et *Extérieur* affichent le score en direct. Les événements (type de service, réceptions ratées, victoire) s'affichent dans le *Command Center*.
+ 
+### Simuler plusieurs matchs
+ 
+Pour obtenir des statistiques, tape dans le *Command Center* (observer) :
+ 
+```netlogo
+simuler-n 100
 ```
-cd existing_repo
-git remote add origin https://gitlab.univ-lorraine.fr/e29982u/projet_poa.git
-git branch -M main
-git push -uf origin main
+ 
+Cette commande enchaîne 100 matchs avec les paramètres courants, puis affiche :
+ 
+- le score de chaque match et le cumul des victoires ;
+- le nombre moyen de ticks par match ;
+- le bilan des victoires Rouge / Vert.
+Le graphique **Proportion de victoires** est mis à jour à la fin de la série.
+ 
+## Paramètres
+ 
+| Curseur | Portée | Rôle |
+|---|---|---|
+| `puissance-max-dom` / `-ext` | par équipe | Puissance maximale des joueurs. Elle augmente la vitesse de la balle et donc le risque d'échec du receveur. |
+| `precision-max-dom` / `-ext` | par équipe | Précision maximale. Sur une passe, une bonne précision envoie la balle sur le coéquipier. Sur une attaque ou un service, elle est **inversée** : la balle s'écarte du joueur adverse visé, qui doit se déplacer davantage. |
+| `taux-echec-max-dom` / `-ext` | par équipe | Taux d'échec maximal. Plus il est élevé, plus les joueurs ratent leurs réceptions. |
+| `chance-service-smashe-dom` / `-ext` | par équipe | Probabilité (en %) de faire un service smash. Le reste est réparti aléatoirement entre service flottant et service normal. |
+| `erreur-max-base` | commun | Angle maximal de décalage de la balle dû au manque de précision. |
+| `rayon-perception` | commun | Distance à partir de laquelle un joueur voit la balle et commence à se déplacer vers elle. |
+| `rayon-contact` | commun | Distance à partir de laquelle un joueur peut toucher la balle. |
+ 
+À la création, chaque joueur reçoit des valeurs aléatoires bornées par ces maximums. Pour la puissance, la borne basse est fixée pour limiter les écarts entre joueurs.
+ 
+### Probabilité de rater une réception
+ 
+À chaque contact, le receveur rate la balle si un tirage aléatoire entre 0 et 99 est inférieur à :
+ 
 ```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.univ-lorraine.fr/e29982u/projet_poa/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+(taux-echec + 1.5 × |décalage|) × (vitesse_balle + 0.5)
+```
+ 
+Une balle rapide ou mal centrée est donc plus difficile à réceptionner.
+ 
+## Fonctionnement du modèle
+ 
+Joueurs et balle se comportent comme des **automates à états finis** (FSM). Il n'existe pas de variable « état » explicite : les états découlent de l'enchaînement des procédures.
+ 
+### États d'un joueur
+ 
+```
+En position ──(balle dans le rayon de perception)──▶ Va vers la balle
+                                                        │
+                    ┌───(balle dans le rayon de contact)┴(balle hors d'atteinte)───┐
+                    ▼                                                              ▼
+              Joue la balle ──(échec au test rater)──▶ Raté réception        Raté par manque de temps
+                    │                                       │                      │
+                    └───────────────────────────────────────┴──────────────────────┴──▶ Revient en position
+```
+ 
+| État | Procédure(s) |
+|---|---|
+| En position | attente sur le patch `pos` |
+| Va vers la balle | `move-balle` |
+| Joue la balle | `passer`, `rater` |
+| Raté réception / raté par manque de temps | `rater`, `move-balle` |
+| Revient en position | `revenir-position` |
+ 
+### États de la balle
+ 
+| État | Procédure(s) | Description |
+|---|---|---|
+| En service | `servir` | Le serveur R1 prend son élan, lance la balle puis frappe vers un receveur adverse. |
+| En vol | `move-balle`, `definir-direction` | La balle se dirige vers sa cible, avec un décalage d'angle lié à la précision. |
+| Sur un joueur | `passer`, `passer-passeur`, `passer-attaquant`, `passer-adversaire` | Passe vers le passeur R3, puis vers un attaquant (R2 ou R4). Au bout de 2 passes, attaque dans le camp adverse. |
+| Au sol | `changement-service` | Attribution du point, rotation si besoin et changement de serveur. |
+ 
+### Actions situées
+ 
+- **Perception locale** : un joueur ne réagit que lorsque la balle entre dans son rayon de perception, et ne peut la jouer que dans son rayon de contact.
+- **Décision selon le contexte** : la réussite d'une réception dépend du joueur (taux d'échec), de la balle (vitesse, décalage) et du type de service reçu.
+## Résultats
+ 
+Expériences menées avec `simuler-n 100`, en ne faisant varier qu'un paramètre à la fois.
+ 
+| # | Hypothèse | Observation | Verdict |
+|---|---|---|---|
+| 1 | L'équipe la plus **puissante** gagne. | Avec un gros écart de puissance, l'équipe la **moins** puissante gagne 61 matchs sur 100 (57/100 avec un écart plus faible). La puissance s'applique aussi aux passes entre coéquipiers, qui sont alors plus souvent ratées. | ❌ Infirmée |
+| 2 | L'équipe la plus **précise** gagne. | L'équipe précise gagne 65 matchs sur 100 : ses passes sont mieux réussies et ses attaques plus dispersées. L'écart se réduit quand les précisions se rapprochent. | ✅ Validée |
+| 3 | L'équipe au **taux d'échec** le plus élevé perd. | Écart de victoires très marqué. C'est le facteur le plus déterminant du modèle. | ✅ Validée |
+| 4 | Le **type de service** influe sur la victoire. | Que l'équipe fasse 100 % de smashs ou des services mixtes, les résultats restent proches de 50/50. | ❌ Peu ou pas d'influence |
+| 5 | Un **rayon de perception** plus grand allonge les échanges. | La durée moyenne d'un match passe de 1 492 ticks (rayon 10) à 3 209 ticks (rayon 20). | ✅ Validée |
+ 
+## Limites du modèle
+ 
+- La balle retombe toujours dans le terrain : il n'y a ni faute de filet ni balle dehors.
+- Une équipe fait toujours le nombre maximal de passes avant d'attaquer.
+- La puissance d'un joueur s'applique de la même façon à une passe et à une attaque.
+- Le modèle ne simule qu'un seul set.
+## Structure du dépôt
+ 
+```
+.
+├── Projet_Volley_BERGER_BOS.nlogox   # Modèle NetLogo (code + interface)
+├── Rapport_Projet.docx               # Rapport du projet
+└── README.md
+```
+ 
